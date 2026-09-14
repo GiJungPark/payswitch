@@ -7,6 +7,6 @@
 | 경로 | 용도 |
 |---|---|
 | [ISSUE_TEMPLATE/](ISSUE_TEMPLATE/README.md) | Issue form과 생성 화면 설정 |
-| [pull_request_template.md](pull_request_template.md) | 변경, 검증, 문서 영향과 위험 보고 |
+| [pull_request_template.md](pull_request_template.md) | 변경, 검증, 문서 영향, 위험과 Claude 관찰사항 보고 |
 
 규칙의 단일 기준은 [CONTRIBUTING.md](../CONTRIBUTING.md)이며, agent 역할은 [AGENTS.md](../AGENTS.md)와 [CLAUDE.md](../CLAUDE.md)에서 확인한다.

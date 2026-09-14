@@ -56,6 +56,14 @@ Closes #
 
 -
 
+## Claude observations
+
+<!-- Claude가 구현 중 발견한 문제와 Codex가 확인한 처리 결과를 기록합니다. 실제 금융정보와 secret은 포함하지 않습니다. 없으면 None으로 표시합니다. -->
+
+| ID | Severity | Location / evidence | Scope | Disposition |
+|---|---|---|---|---|
+| None | - | - | - | - |
+
 ## Checklist
 
 - [ ] Issue 완료 조건을 모두 충족했습니다.
@@ -69,3 +77,4 @@ Closes #
 - [ ] API, DB, 전문 또는 이벤트 변경을 문서화했습니다.
 - [ ] 필요한 설계 결정과 변경을 ADR에 반영했습니다.
 - [ ] 운영 및 복구 영향을 확인했습니다.
+- [ ] Claude observations를 기록했거나 발견된 항목이 없음을 표시했습니다.

@@ -11,6 +11,7 @@
 - 작업 브랜치 이름과 커밋 단위를 결정한다.
 - Claude Code에 구현 지시서를 제공한다.
 - Claude가 작성한 diff를 설계, 범위, 안정성, 테스트 관점에서 리뷰한다.
+- Claude가 구현 중 발견하거나 관측한 문제를 수집하고 검증하여 Pull Request에 기록한다.
 - 필요한 검증 명령을 직접 실행하고 결과를 확인한다.
 - 커밋 메시지와 Pull Request 제목·본문을 작성한다.
 - README, ADR, agent 지침과 GitHub template의 소유권을 갖고 정합성을 관리한다.
@@ -93,7 +94,7 @@ Verification:
 - 실행할 테스트와 명령
 
 Handoff requirements:
-- baseline, 변경 파일, 테스트 결과, 실행하지 못한 검증, 문서 drift와 남은 위험 보고
+- baseline, 변경 파일, 테스트 결과, 실행하지 못한 검증, 문서 drift, 남은 위험과 observed issues 보고
 ```
 
 지시서에는 구현 방법을 불필요하게 고정하지 않되, ADR과 public contract를 Claude가 임의로 변경하지 못하도록 경계를 명확히 적는다.
@@ -148,6 +149,14 @@ Codex는 이전 Claude 완료 보고와 실제 diff를 확인한 뒤 snapshot과
 
 Claude의 완료 보고만 신뢰하지 말고 실제 diff와 테스트 결과를 확인한다.
 
+Claude가 보고한 Observed issues는 현재 Issue 범위와 관계없이 Codex가 재현 가능성, 파일·행과 근거를 확인한다. 확인된 항목은 PR 본문의 `Claude observations`에 남기고 다음과 같이 처리한다.
+
+- 현재 Issue의 완료 조건을 깨는 P0/P1은 review finding으로 승격해 현재 작업에서 수정한다.
+- 범위 안의 P2는 리뷰 예산 안에서 반영할 수 있다.
+- 범위 밖 문제는 Claude가 수정하지 않으며 PR에 `Follow-up candidate`로 기록한다. 별도 Issue 생성은 Codex가 범위와 우선순위를 정한 뒤 수행한다.
+- 재현되지 않거나 중복인 항목도 삭제하지 않고 `Not reproduced` 또는 `Duplicate`와 근거를 기록한다.
+- 실제 금융정보, secret이나 원문 전문은 PR에 복사하지 않고 마스킹된 근거만 남긴다.
+
 ### 범위
 
 - Issue의 포함 범위만 변경했는가?
@@ -188,7 +197,7 @@ Risk tier는 변경 파일 수가 아니라 실패했을 때의 영향으로 정
 | Medium | 일반 API, 관리자, 배치와 application 로직 | Codex 의미 리뷰 1회 |
 | High | 금액, 상태 전이, 멱등성, transaction, DB constraint·migration, TCP 전문, Outbox, 동시성, 마스킹·보안 | Codex 전체 체크리스트 1회 |
 
-독립 Claude 리뷰는 자동으로 추가하지 않는다. High 작업에서 Codex가 구체적인 불확실성을 발견했거나 사용자가 요청한 경우에만, 해당 위험과 변경 파일로 범위를 제한해 1회 실행한다.
+독립 Claude 리뷰는 자동으로 추가하지 않는다. High 작업에서 Codex가 구체적인 불확실성을 발견했거나 사용자가 요청한 경우에만, 관련 Issue 또는 PR과 해당 위험·변경 파일로 범위를 제한해 1회 실행한다.
 
 1. snapshot, build, lint와 관련 테스트 같은 기계 검증을 먼저 실행한다. 실패하면 장문의 의미 리뷰를 시작하지 않고 실패 원인과 재현 명령부터 Claude에 전달한다.
 2. 첫 의미 리뷰에서 수정 항목을 한 번에 통합한다. finding은 심각도순 최대 5개, 전체 30줄 이내로 작성한다.
@@ -209,6 +218,8 @@ Risk tier는 변경 파일 수가 아니라 실패했을 때의 영향으로 정
 5. 사람 리뷰가 있는 라운드는 별도의 독립 모델 리뷰로 중복하지 않는다. High 위험 수정에 구체적인 미확인 사항이 있을 때만 제한된 추가 리뷰를 1회 사용한다.
 6. 영향받는 테스트와 최종 Verification을 실행하고 Codex가 diff를 확인한 뒤 같은 branch에 commit·push한다.
 7. 사용자에게 comment별 처리 결과, commit, 검증과 다시 봐야 할 항목을 보고한다.
+
+Claude가 이번 수정 과정에서 새로 보고한 Observed issues도 검증하여 PR 본문의 `Claude observations`를 함께 갱신한다.
 
 이 문구는 PR 댓글 작성, review dismiss, conversation resolve 또는 merge 권한까지 포함하지 않는다. GitHub에 답글을 쓰거나 thread를 resolve하는 작업은 사용자가 명시적으로 요청할 때만 수행한다.
 

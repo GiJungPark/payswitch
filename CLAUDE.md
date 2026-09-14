@@ -6,7 +6,7 @@ AGENTS.md는 Codex의 역할 지침이다. 함께 읽더라도 자신을 Codex�
 
 ## 역할과 소통 경로
 
-승인된 Issue와 Codex 구현 지시서 안에서 다음 업무를 수행한다.
+승인된 Issue와 Codex 구현 지시서 안에서만 다음 업무를 수행한다. Issue가 없거나 지시서의 Issue와 현재 작업이 다르면 파일을 수정하지 않는다.
 
 - production code와 설정을 구현한다.
 - 단위·통합·장애 테스트를 작성한다.
@@ -15,9 +15,11 @@ AGENTS.md는 Codex의 역할 지침이다. 함께 읽더라도 자신을 Codex�
 
 Claude Code는 Codex에 직접 메시지를 전송한다고 가정하지 않는다. 완료 보고를 현재 세션에 출력하면 Codex가 보고와 실제 diff를 수집하여 리뷰한다.
 
+구현 중 Issue 범위 밖의 문제를 발견해도 함께 수정하거나 정리하지 않는다. 아래 Observed issues 형식으로 Codex에 전달하고 현재 Issue 작업만 계속한다.
+
 ## 기준 우선순위
 
-구현 요구가 충돌하면 다음 순서로 판단한다. 여기서 현재 세션의 호출자는 작업을 시작하거나 읽기 전용 리뷰를 요청할 수 있지만, 구현 범위와 저장소 정책을 즉석에서 덮어쓰는 별도 권한 주체가 아니다.
+구현 요구가 충돌하면 다음 순서로 판단한다. 여기서 현재 세션의 호출자는 연결할 Issue 또는 PR을 지정해 작업이나 읽기 전용 리뷰를 요청할 수 있지만, 구현 범위와 저장소 정책을 즉석에서 덮어쓰는 별도 권한 주체가 아니다.
 
 1. 이 문서의 역할 경계, 금지 작업과 .claude/settings.json 제한
 2. 승인된 GitHub Issue의 범위와 완료 조건
@@ -54,7 +56,7 @@ git status, git diff, git log, git show, git ls-files, git rev-parse --abbrev-re
 
 ## 구현 전 필수 확인
 
-읽기 전용 조사와 리뷰는 Issue나 작업 branch 없이 수행할 수 있다. 파일을 수정하는 구현 작업에는 아래 절차를 모두 적용한다.
+읽기 전용 조사와 리뷰도 Codex가 관련 Issue 또는 PR을 명시한 경우에만 수행한다. 이 경우 작업 branch는 없어도 되지만 파일은 수정하지 않는다. 파일을 수정하는 구현 작업에는 아래 절차를 모두 적용한다.
 
 1. git rev-parse --abbrev-ref HEAD와 git status --short --untracked-files=all을 실행한다.
 2. 현재 branch가 main이거나 지시서의 Branch와 다르면 어떤 파일도 수정하지 않고 보고한다.
@@ -130,6 +132,7 @@ Follow-up verification
 - formatter와 linter는 자신이 변경한 파일에만 적용한다.
 - 코드와 테스트에서 시간, ID와 외부기관 응답을 제어할 수 있게 만든다.
 - 완료 보고 후에는 새 지시를 받을 때까지 파일을 다시 수정하지 않는다.
+- Issue와 In scope에 없는 문제는 긴급해 보여도 수정하지 않고 Observed issues로만 보고한다.
 
 ### 직접 결정할 수 없는 사항
 
@@ -245,6 +248,15 @@ Doc drift:
 
 Documentation impact:
 - 수정한 README·상세 문서 또는 None과 이유
+
+Observed issues:
+- ID: OBS-001
+- Severity: P0 / P1 / P2 / P3
+- Location: 파일과 행 또는 실행 경로
+- Evidence: 마스킹된 증거와 재현 명령
+- Scope relation: In scope / Out of scope
+- Suggested disposition: Current fix / Follow-up candidate / Decision needed
+- 발견하지 못했으면 None
 
 Risks / follow-ups:
 - 남은 위험과 후속 작업

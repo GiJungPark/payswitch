@@ -7,8 +7,8 @@
 | 역할 | 책임 |
 |---|---|
 | 사용자 | 목표 승인, 중요한 범위·설계 결정과 최종 merge 판단 |
-| Codex | Issue와 작업 범위 작성, branch·commit·PR 관리, 코드 리뷰와 최종 검증 |
-| Claude Code | 승인된 범위의 코드·테스트·migration 구현과 결과 보고 |
+| Codex | Issue와 작업 범위 작성, branch·commit·PR 관리, 코드 리뷰, Claude 관찰사항 기록과 최종 검증 |
+| Claude Code | 승인된 Issue 범위의 코드·테스트·migration 구현과 범위 밖 관찰사항 보고 |
 
 기본 흐름은 다음과 같다.
 
@@ -197,6 +197,7 @@ PR template의 모든 필수 항목을 작성한다.
 - 포함하지 않은 내용을 명시한다.
 - 실제 실행한 검증 명령과 결과를 기록한다.
 - 리뷰어가 집중해서 볼 위험과 파일을 표시한다.
+- Claude가 구현 중 발견한 문제와 Codex의 확인·처리 결과를 `Claude observations`에 기록한다.
 - API, schema, protocol, 디렉터리 책임 또는 운영 방식이 바뀌면 가장 가까운 README와 관련 문서·ADR을 연결한다.
 
 ### 크기와 상태
@@ -221,6 +222,8 @@ Codex는 다음 순서로 검증한다.
 
 사용자가 “PR에 리뷰 달았어”라고 알리면 Codex는 review와 미해결 inline comment를 수집해 범위 안의 변경을 같은 branch에 반영하고 push한다. 댓글 답변, conversation resolve와 merge는 별도 요청이 있을 때만 수행한다.
 
+Claude는 승인된 Issue 밖의 문제를 직접 수정하지 않는다. 발견한 문제는 Codex에 보고하고, Codex는 근거를 확인해 PR의 `Claude observations`에 `Current fix`, `Follow-up candidate`, `Decision needed`, `Not reproduced` 또는 `Duplicate` 상태로 남긴다.
+
 모든 필수 check가 통과하고 미해결 리뷰가 없을 때 사용자가 최종 merge를 승인한다. 사용자가 실행을 요청하면 Codex가 squash merge하며, squash commit 제목은 PR 제목을 그대로 사용한다.
 
 ## Definition of Done
@@ -235,6 +238,7 @@ Codex는 다음 순서로 검증한다.
 - [ ] API, DB, 전문 또는 이벤트 변경이 문서화됐다.
 - [ ] 새 설계 결정이 ADR에 반영됐다.
 - [ ] 실패·복구·운영 영향을 PR에 기록했다.
+- [ ] Claude observations를 기록했거나 발견된 항목이 없음을 표시했다.
 
 ## 권장 GitHub 설정
 
