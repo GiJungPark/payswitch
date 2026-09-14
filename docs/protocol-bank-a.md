@@ -1,5 +1,7 @@
 # Bank A TCP 전문 v1
 
+[문서 홈](README.md) · [프로젝트 홈](../README.md)
+
 ## 목적과 범위
 
 Bank A 전문은 TCP 금융기관 연동에서 framing, 고정 byte 필드, multiplexing, MAC 검증과 timeout 처리를 학습하기 위한 가상 규격이다. 실제 금융기관 또는 ISO 8583 규격을 복제하지 않는다.
@@ -63,8 +65,9 @@ USD 12.34   -> 000000000000001234
 
 - MAC은 TCP checksum을 대체하는 전송 오류 검사가 아니라 애플리케이션 메시지의 무결성과 송신자 확인을 위한 값이다.
 - 필드 1부터 15까지 padding과 EUC-KR encoding을 완료한 raw byte 배열을 입력으로 사용한다.
-- 학습 환경에서는 HMAC-SHA-256과 simulator 전용 테스트키를 사용한다.
-- 키는 source code나 전문에 포함하지 않고 실행 환경에서 주입한다.
+- 학습 환경에서는 HMAC-SHA-256을 사용한다.
+- runtime용 MAC key는 source code나 전문에 포함하지 않고 실행 환경에서 주입하며, 값이 없으면 애플리케이션 시작을 실패시킨다.
+- golden fixture는 재현 가능한 공개 dummy key를 사용한다. 이 키는 `spec/bank-a/v1/fixtures/` 아래에 테스트 전용임을 명시해 저장하고 production 설정에서 기본값으로 참조하지 않는다.
 - MAC 불일치 응답은 업무 결과로 반영하지 않고 `MALFORMED_RESPONSE`로 기록한다.
 - 실제 금융 보안키 관리와 암호 장비 연동은 프로젝트 범위에 포함하지 않는다.
 
@@ -123,4 +126,3 @@ USD 12.34   -> 000000000000001234
 - minor unit 금액 변환
 - MAC 대상 byte 범위
 - 서로 다른 순서의 응답 correlation
-

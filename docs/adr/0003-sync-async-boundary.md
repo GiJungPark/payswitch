@@ -1,5 +1,7 @@
 # ADR 0003: 동기·비동기 처리 경계
 
+[ADR 목록](README.md) · [문서 홈](../README.md) · [프로젝트 홈](../../README.md)
+
 - 상태: Accepted
 - 날짜: 2026-09-13
 
@@ -22,4 +24,3 @@
 - Kafka 도입 전에도 event 중복과 Outbox 장애를 먼저 검증할 수 있다.
 - 온라인 거래는 외부 기관 latency의 영향을 받으므로 timeout과 기관별 bulkhead가 필요하다.
 - Kafka로 변경해도 consumer inbox와 batch 입력 모델은 유지된다.
-

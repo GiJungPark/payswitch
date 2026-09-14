@@ -1,0 +1,126 @@
+{
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "disableAutoMode": "disable",
+    "deny": [
+      "Edit(/.git/**)",
+      "Edit(/.claude/**)",
+      "Edit(/.github/**)",
+      "Edit(/AGENTS.md)",
+      "Edit(/CLAUDE.md)",
+      "Edit(/CONTRIBUTING.md)",
+      "Edit(/README.md)",
+      "Edit(/docs/README.md)",
+      "Edit(/docs/adr/**)",
+      "Edit(/.gitignore)",
+      "Edit(/.gitattributes)",
+      "Edit(/.gitmodules)",
+      "Bash(gh *)",
+      "Bash(*/gh *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(git branch *)",
+      "Bash(git switch *)",
+      "Bash(git checkout *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git revert *)",
+      "Bash(git apply *)",
+      "Bash(git am *)",
+      "Bash(git stash *)",
+      "Bash(git reset *)",
+      "Bash(git restore *)",
+      "Bash(git clean *)",
+      "Bash(git tag *)",
+      "Bash(git rm *)",
+      "Bash(git mv *)",
+      "Bash(git worktree *)",
+      "Bash(git update-ref *)",
+      "Bash(git update-index *)",
+      "Bash(git read-tree *)",
+      "Bash(git write-tree *)",
+      "Bash(git commit-tree *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(git notes *)",
+      "Bash(git submodule *)",
+      "Bash(git bisect *)",
+      "Bash(git config *)",
+      "Bash(git remote *)",
+      "Bash(git replace *)",
+      "Bash(git maintenance *)",
+      "Bash(git gc *)",
+      "Bash(git prune *)",
+      "Bash(git checkout-index *)",
+      "Bash(git hash-object *)",
+      "Bash(git fast-import *)",
+      "Bash(git filter-branch *)",
+      "Bash(git init *)",
+      "Bash(git -C *)",
+      "Bash(git -c *)",
+      "Bash(git --*)",
+      "Bash(git -*)",
+      "Bash(*/git *)",
+      "Bash(sh -c *)",
+      "Bash(bash -c *)",
+      "Bash(zsh -c *)",
+      "mcp__*"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "allowUnsandboxedCommands": false,
+    "failIfUnavailable": true,
+    "filesystem": {
+      "denyWrite": [
+        "./.git",
+        "./.claude",
+        "./.github",
+        "./AGENTS.md",
+        "./CLAUDE.md",
+        "./CONTRIBUTING.md",
+        "./README.md",
+        "./docs/README.md",
+        "./docs/adr",
+        "./.gitignore",
+        "./.gitattributes",
+        "./.gitmodules"
+      ]
+    },
+    "network": {
+      "deniedDomains": [
+        "github.com",
+        "*.github.com"
+      ]
+    },
+    "credentials": {
+      "files": [
+        {
+          "path": "~/.config/gh",
+          "mode": "deny"
+        },
+        {
+          "path": "~/.git-credentials",
+          "mode": "deny"
+        },
+        {
+          "path": "~/.ssh",
+          "mode": "deny"
+        }
+      ],
+      "envVars": [
+        {
+          "name": "GH_TOKEN",
+          "mode": "deny"
+        },
+        {
+          "name": "GITHUB_TOKEN",
+          "mode": "deny"
+        }
+      ]
+    }
+  }
+}
