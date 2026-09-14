@@ -1,5 +1,7 @@
 # 이벤트 계약과 전달 정책
 
+[문서 홈](README.md) · [프로젝트 홈](../README.md)
+
 ## 역할
 
 온라인 승인·취소 결과는 API 응답 경로에서 동기식으로 결정한다. Domain event는 거래 commit 이후의 정산 대상 생성, 통계, 알림과 운영 처리를 분리하기 위해 사용한다.
@@ -76,4 +78,3 @@ Outbox publisher가 Kafka에 event를 발행하고 `paymentId`를 record key로 
 - event 이름에 구현 기술이나 consumer 이름을 넣지 않는다.
 - 기존 event payload의 필드 의미를 조용히 변경하지 않는다.
 - consumer가 event payload 없이 현재 결제 상태만 조회하여 과거 event의 의미를 재구성하지 않는다.
-

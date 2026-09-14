@@ -1,5 +1,7 @@
 # ADR 0004: 기관 simulator 독립 구현
 
+[ADR 목록](README.md) · [문서 홈](../README.md) · [프로젝트 홈](../../README.md)
+
 - 상태: Accepted
 - 날짜: 2026-09-13
 
@@ -21,4 +23,3 @@ PaySwitch와 기관 simulator가 동일한 codec implementation을 사용하면 
 - 전문 변경 시 두 구현을 각각 수정해야 한다.
 - 명세와 fixture의 version 관리가 중요해진다.
 - 단위 테스트뿐 아니라 실제 TCP contract test가 필요하다.
-

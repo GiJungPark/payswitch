@@ -1,5 +1,7 @@
 # 데이터 모델
 
+[문서 홈](README.md) · [프로젝트 홈](../README.md)
+
 이 문서는 구현 전 논리 모델이다. 실제 DDL과 인덱스는 Milestone 1에서 migration으로 관리한다.
 
 ## 관계
@@ -193,4 +195,3 @@ outbox_event (published_at, occurred_at)
 ```
 
 인덱스는 예상만으로 확정하지 않는다. 대량 fixture와 실제 조회 SQL의 `EXPLAIN ANALYZE` 결과를 문서화한 뒤 조정한다.
-

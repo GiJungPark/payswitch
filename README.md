@@ -2,8 +2,8 @@
 
 > 금융기관 연동, 원화·외화 승인, 취소, 정산 및 대사를 학습하기 위한 PG(Payment Gateway) 결제 스위치
 
-**상태:** 설계 중  
-**현재 목표:** 독립된 TCP 기관 simulator와 통신하며 중복과 결과 불확실성에 안전한 원화 승인 MVP 구현
+- **상태:** 설계 중
+- **현재 목표:** 독립된 TCP 기관 simulator와 통신하며 중복과 결과 불확실성에 안전한 원화 승인 MVP 구현
 
 ## 프로젝트 소개
 
@@ -112,6 +112,7 @@ Kafka, Redis와 ELK 전체 구성은 기본 실행에 포함하지 않는다. �
 - [x] 거래 모델과 `UNKNOWN` 응답 정책 결정
 - [x] 가상 TCP 전문 v1 정의
 - [ ] Gradle 멀티모듈 구성
+- [ ] GitHub Actions 기반 기본 build·test workflow
 
 ### Milestone 1 — 거래 코어
 
@@ -163,11 +164,11 @@ Kafka, Redis와 ELK 전체 구성은 기본 실행에 포함하지 않는다. �
 
 ## 상세 문서
 
-- [용어집](docs/glossary.md)
-- [도메인 모델과 상태 정책](docs/domain-model.md)
-- [Bank A TCP 전문 v1](docs/protocol-bank-a.md)
-- [데이터 모델](docs/database-schema.md)
-- [이벤트 계약과 전달 정책](docs/events.md)
-- [배치·외화·정산·대사](docs/batch-and-settlement.md)
-- [장애 시나리오](docs/failure-scenarios.md)
-- [ADR 목록](docs/adr/README.md)
+| 경로 | 시작 문서 | 설명 |
+|---|---|---|
+| `docs/` | [문서 허브](docs/README.md) | 도메인, 전문, 데이터, 이벤트, 배치와 장애 설계 |
+| `docs/adr/` | [ADR 목록](docs/adr/README.md) | 확정된 설계 결정과 변경 이력 |
+| `.github/` | [GitHub workflow](.github/README.md) | Issue와 Pull Request template |
+| `.claude/` | [Claude Code 설정](.claude/README.md) | Claude 실행 제한과 역할 경계 |
+
+작업 방식은 [기여 및 Git workflow](CONTRIBUTING.md), Codex와 Claude의 역할은 각각 [AGENTS.md](AGENTS.md)와 [CLAUDE.md](CLAUDE.md)에서 확인한다.

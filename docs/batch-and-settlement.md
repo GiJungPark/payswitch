@@ -1,5 +1,7 @@
 # 배치·외화·정산·대사
 
+[문서 홈](README.md) · [프로젝트 홈](../README.md)
+
 ## 온라인 거래와 배치의 경계
 
 Milestone 3에서 거래 상태 변경과 Outbox event를 같은 트랜잭션에 저장한다. Kafka 도입 전에는 DB poller가 event를 소비하여 `settlement_target`을 멱등하게 만든다.
@@ -92,4 +94,3 @@ Bank A simulator는 영업일별 기관 원장 파일을 독립적으로 생성�
 - 금액 합계 불일치나 필수 파일 누락은 job 전체를 실패시킨다.
 - 일부 기관의 실패가 다른 기관 정산을 막지 않도록 기관별 JobInstance를 사용한다.
 - 실행별 read/write/skip/retry count와 처리 시간을 Micrometer로 노출한다.
-
