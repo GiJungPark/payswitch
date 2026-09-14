@@ -1,0 +1,171 @@
+name: Task
+description: 기능, 버그, 리팩터링, 테스트, 문서 또는 조사 작업을 정의합니다.
+title: ""
+labels: []
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: Issue 제목에도 같은 Type을 `[Type]` 형식으로 사용합니다.
+      options:
+        - Feature
+        - Bug
+        - Refactor
+        - Test
+        - Docs
+        - Chore
+        - Spike
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - domain
+        - api
+        - persistence
+        - protocol
+        - connector
+        - simulator
+        - batch
+        - event
+        - admin
+        - infra
+        - build
+        - docs
+        - ci
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - p0
+        - p1
+        - p2
+        - p3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk_tier
+    attributes:
+      label: Risk tier
+      description: 변경량이 아니라 실패 시 영향을 기준으로 선택합니다.
+      options:
+        - Low — 문서·테스트 전용 또는 비동작 변경
+        - Medium — 일반 application·API·관리자·배치 로직
+        - High — 결제 정합성·DB·전문·동시성·보안
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+      description: 현재 문제와 이 작업이 필요한 이유를 설명합니다.
+      placeholder: 현재 어떤 문제가 있으며 왜 지금 해결해야 하는지 작성합니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목표
+      description: 완료 후 관찰할 수 있는 결과를 작성합니다.
+      placeholder: 이 작업이 완료되면 무엇이 달라지는지 작성합니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 포함 범위
+      placeholder: |
+        - 구현할 항목
+        - 변경할 contract
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: 제외 범위
+      placeholder: |
+        - 이번 Issue에서 의도적으로 하지 않을 항목
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 완료 조건
+      description: 테스트나 관찰로 검증 가능한 checklist를 작성합니다.
+      placeholder: |
+        - [ ] 조건 1
+        - [ ] 조건 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: test_plan
+    attributes:
+      label: 테스트 계획
+      placeholder: |
+        - 실행할 명령
+        - 성공, 실패, 경계 및 장애 시나리오
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: 기술 메모
+      description: 관련 ADR, 설계 문서, risk와 선행 Issue를 작성합니다.
+      placeholder: |
+        - Related docs:
+        - ADR required: Yes / No (reason)
+        - Risks:
+    validations:
+      required: true
+
+  - type: textarea
+    id: libraries
+    attributes:
+      label: Libraries / build plugins
+      description: 추가할 라이브러리·플러그인의 이름, 용도와 버전 관리 방식을 작성합니다. 없으면 None을 작성합니다.
+      placeholder: |
+        - Name:
+        - Purpose:
+        - Version management: Spring Boot BOM / version catalog / explicit version
+    validations:
+      required: true
+
+  - type: textarea
+    id: documentation_impact
+    attributes:
+      label: Documentation impact
+      description: 수정할 가장 가까운 README와 상세 문서를 적습니다. 변경이 없으면 None과 이유를 작성합니다.
+      placeholder: |
+        - README: payment-core/README.md
+        - Detail: docs/domain-model.md
+        - 또는 None — 문서화된 동작과 구조가 변하지 않음
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: 작업 준비 확인
+      options:
+        - label: 한 PR에서 검증 가능한 결과 하나로 범위를 제한했습니다.
+          required: true
+        - label: 새로운 설계 결정이 필요한지 확인했습니다.
+          required: true
+        - label: 실제 금융정보나 secret을 사용하지 않습니다.
+          required: true
