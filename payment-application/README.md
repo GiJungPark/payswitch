@@ -8,11 +8,12 @@
 
 - 승인·조회 등 거래 use case의 흐름과 transaction 경계를 조정한다.
 - 저장소와 기관 connector가 구현할 port를 정의한다.
-- 현재는 build 기준선만 있으며 use case는 후속 Issue에서 구현한다.
+- 현재는 `PaymentRepository`와 `FinancialTransactionRepository`의 insert·조회 port를 제공하며 use case와 기관 connector port는 후속 Issue에서 구현한다.
 
 ## 주요 진입점
 
-- Source root: `src/main/kotlin/io/github/gijungpark/payswitch/application/` (첫 use case와 함께 생성)
+- [`PaymentRepository.kt`](src/main/kotlin/io/github/gijungpark/payswitch/application/payment/PaymentRepository.kt): 결제 insert와 ID·가맹점 client reference 조회 port
+- [`FinancialTransactionRepository.kt`](src/main/kotlin/io/github/gijungpark/payswitch/application/transaction/FinancialTransactionRepository.kt): 금융거래 insert와 ID·결제 ID 조회 port
 - Build: [build.gradle.kts](build.gradle.kts)
 
 ## 의존 방향
