@@ -69,8 +69,7 @@ type: AUTHORIZE | CANCEL | REVERSAL
 originalTransactionId
 idempotencyKey
 requestHash
-amount
-currency
+amount: Money(amountMinor, currency)
 status
 ```
 
@@ -113,6 +112,38 @@ failureReason
 ```
 
 상태는 `CREATED`, `SENT`, `RESPONSE_RECEIVED`, `TIMED_OUT`, `CONNECTION_FAILED`, `MALFORMED_RESPONSE`를 사용한다.
+
+## 구현된 승인 도메인 규칙
+
+[`payment-domain`](../payment-domain/README.md)은 현재 KRW 승인에 필요한 `Payment`와 `AUTHORIZE` `FinancialTransaction`만 구현한다. 취소·망취소 거래, 금액 예약, 멱등키·요청 hash와 `InstitutionMessageAttempt`는 후속 Issue에서 추가한다.
+
+### 금액과 식별자
+
+- `Money`는 `amountMinor`(통화 최소 단위 정수)와 `currency`를 항상 함께 보유하며 음수를 거절한다. 0과 `Long.MAX_VALUE`는 보유할 수 있다.
+- `paymentId`, `merchantId`, `clientReference`, `transactionId`는 blank 값을 거절하고 생성 후 변경할 수 없다.
+- 승인 거래 생성과 `Payment` 승인 반영은 `KRW`이면서 1원 이상인 금액만 허용한다.
+
+### 초기값
+
+| 모델 | 초기 상태 | 초기값 |
+|---|---|---|
+| `Payment` | `CREATED` | `transactionCurrency=KRW`, `approvedAmount`·`cancelledAmount`·`reservedCancelAmount`=KRW 0, `version=0` |
+| 승인 `FinancialTransaction` | `RECEIVED` | `type=AUTHORIZE`, `originalTransactionId=null`, `version=0` |
+
+`approvedAmount`는 승인 전 KRW 0이며, `Payment`가 `APPROVED`로 전이할 때만 전달받은 승인 금액으로 설정된다.
+
+### 구현된 전이
+
+- `Payment`: `CREATED -> APPROVED | DECLINED | FAILED | RESOLUTION_REQUIRED`, `RESOLUTION_REQUIRED -> APPROVED | DECLINED | FAILED | MANUAL_REVIEW_REQUIRED`만 허용한다. 취소 관련 전이는 아직 구현하지 않았으므로 그 밖의 상태에서 나가는 전이는 모두 거절한다.
+- `FinancialTransaction`: `RECEIVED -> PROCESSING`, `PROCESSING -> SUCCEEDED | DECLINED | FAILED | UNKNOWN`, `UNKNOWN -> SUCCEEDED | DECLINED | FAILED | MANUAL_REVIEW_REQUIRED`만 허용한다.
+- `Payment.status=RESOLUTION_REQUIRED`는 승인 거래 `UNKNOWN`의 요약 표현이지만 별도 enum 값이다. 한 모델의 상태 변경 method는 다른 모델을 변경하지 않으며, 두 모델의 상태 동기화는 application 계층이 담당한다.
+
+### version과 중복 적용
+
+- 상태가 실제로 바뀔 때마다 `version`이 정확히 1 증가한다. 승인 반영처럼 상태와 금액이 함께 바뀌어도 1만 증가한다.
+- 현재 상태와 같은 target 상태를 다시 적용하면 no-op이며 `version`을 증가시키지 않는다.
+- 이미 `APPROVED`인 `Payment`에 같은 승인 금액을 다시 적용하면 no-op이고, 다른 금액은 상충 결과로 거절한다.
+- terminal 상태에서 다른 결과를 적용하거나 허용되지 않은 전이를 요청하면 예외를 발생시키고 기존 상태·금액·`version`을 유지한다.
 
 ## API 결과 정책
 
