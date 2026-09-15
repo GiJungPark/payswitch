@@ -1,0 +1,4 @@
+# test profile 전용 설정. Testcontainers JDBC URL이 MySQL container를 시작하고 container의 테스트 계정으로 접속한다.
+spring:
+  datasource:
+    url: jdbc:tc:mysql:8.4:///payswitch
