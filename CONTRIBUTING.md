@@ -6,7 +6,7 @@
 
 | 역할 | 책임 |
 |---|---|
-| 사용자 | 목표 승인, 중요한 범위·설계 결정과 최종 merge 판단 |
+| 사용자 | 목표 승인, Codex와 Claude Code의 직접 호출·handoff, 중요한 범위·설계 결정과 최종 merge 판단 |
 | Codex | Issue와 작업 범위 작성, branch·commit·PR 관리, 코드 리뷰, Claude 관찰사항 기록과 최종 검증 |
 | Claude Code | 승인된 Issue 범위의 코드·테스트·migration 구현과 범위 밖 관찰사항 보고 |
 
@@ -15,9 +15,11 @@
 ```text
 사용자 목표
 → Codex Issue 작성
-→ Codex branch 준비 및 Claude 지시
-→ Claude 구현·테스트
-→ Codex diff review·재검증
+→ Codex branch 준비 및 구현 프롬프트 제공
+→ 사용자가 Claude Code를 직접 호출
+→ Claude 구현·테스트 후 사용자에게 보고
+→ 사용자가 Codex에 리뷰 요청
+→ Codex diff review·재검증 및 필요 시 수정 프롬프트 제공
 → Codex commit·PR 작성
 → 사용자 확인·squash merge
 ```
@@ -27,6 +29,8 @@
 ### 원칙
 
 - Issue 하나는 PR 하나로 검증할 수 있는 결과 하나를 다룬다.
+- Issue는 이전 Codex 대화나 Claude 세션을 보지 않아도 목표, 포함·제외 범위, 완료 조건, 제약과 검증 방법을 이해할 수 있는 self-contained 작업 계약으로 작성한다.
+- 구현에 필요한 public contract와 관련 ADR·설계 문서 경로를 Issue에 적고, 별도 대화에서만 정한 요구에 의존하지 않는다.
 - 구현 전에 목표, 포함·제외 범위와 완료 조건을 합의한다.
 - 완료 조건은 “구현한다”가 아니라 테스트나 관찰로 확인 가능한 문장으로 작성한다.
 - 새로운 설계 결정은 Issue 본문에 숨기지 않고 ADR 필요 여부를 표시한다.
@@ -104,6 +108,28 @@ area:connector, area:batch, area:event, area:admin, area:infra,
 area:build, area:docs, area:ci
 priority:p0, priority:p1, priority:p2, priority:p3
 ```
+
+## Agent handoff
+
+Codex와 Claude Code는 서로를 자동 호출하거나 상대 세션을 감독하지 않는다. 사용자가 각 agent를 직접 호출하며 GitHub Issue, branch와 copy-ready prompt로 작업을 전달한다. 사용자가 명시적으로 자동 실행이나 terminal 감독을 요청한 경우만 예외로 한다.
+
+### 구현 시작
+
+1. Codex가 self-contained Issue를 작성한다.
+2. Codex가 최신 `main`에서 Issue 전용 branch를 생성하고 baseline status와 working tree snapshot을 기록한다.
+3. Codex가 Issue 본문 전체, branch와 baseline을 포함한 `Claude Code 구현 프롬프트`를 fenced block으로 사용자에게 제공한다. Claude Code의 GitHub 조회는 제한되므로 Issue 번호나 URL만 전달하지 않는다.
+4. 사용자가 해당 prompt를 별도 Claude Code 세션에 직접 전달한다.
+5. Claude Code는 구현과 테스트를 마치고 현재 사용자에게 완료 보고를 출력한다. commit, push와 Pull Request는 수행하지 않는다.
+6. 사용자는 Codex에 “Claude 구현 완료. 리뷰해줘”라고 요청한다. Observed issues가 있으면 해당 절만 함께 전달하고 전체 terminal output은 전달하지 않아도 된다.
+
+### 리뷰 수정
+
+1. Codex는 Claude 보고가 아니라 실제 working tree diff와 재실행한 검증을 기준으로 리뷰한다.
+2. 수정할 finding이 있으면 심각도순으로 통합한 `Claude Code 수정 프롬프트`를 fenced block으로 사용자에게 제공한다. prompt에는 원본 Issue 본문, branch, 보호할 baseline, 정확한 editable files, findings와 검증 명령을 포함한다.
+3. 사용자가 prompt를 Claude Code에 직접 전달하고 수정 완료 후 Codex에 재리뷰를 요청한다.
+4. finding이 없거나 재리뷰가 끝나면 Codex가 diff를 확인한 뒤 commit, push와 Pull Request를 수행한다.
+
+Codex의 사용자 보고에서 다음 작업 주체가 Claude Code이면 prompt heading과 fenced block을 생략하지 않는다. 설명만 제공하거나 Claude Code를 백그라운드에서 대신 호출한 뒤 종료하지 않는다.
 
 ## Branch 컨벤션
 
@@ -218,7 +244,7 @@ Codex는 다음 순서로 검증한다.
 5. 테스트 실행 결과
 6. 문서, migration과 운영 영향
 
-리뷰는 Risk tier에 비례해 수행한다. 의미 리뷰는 기본 1회, Claude 수정과 집중 재리뷰는 1회로 제한한다. finding은 최대 5개로 통합하며 P0/P1은 현재 PR에서 해결하고, 범위 밖 P2는 후속 Issue로 분리한다. 사람의 PR 리뷰가 들어온 라운드에는 동일 범위의 독립 모델 리뷰를 기본적으로 반복하지 않는다.
+리뷰는 Risk tier에 비례해 수행한다. 의미 리뷰는 기본 1회, Claude 수정과 집중 재리뷰는 1회로 제한한다. finding은 최대 5개로 통합하며 P0/P1은 현재 PR에서 해결하고, 범위 밖 P2는 후속 Issue로 분리한다. Claude 수정이 필요하면 Codex가 사용자를 위한 copy-ready prompt를 제공하고 사용자가 Claude Code를 직접 호출한다. 사람의 PR 리뷰가 들어온 라운드에는 동일 범위의 독립 모델 리뷰를 기본적으로 반복하지 않는다.
 
 사용자가 “PR에 리뷰 달았어”라고 알리면 Codex는 review와 미해결 inline comment를 수집해 범위 안의 변경을 같은 branch에 반영하고 push한다. 댓글 답변, conversation resolve와 merge는 별도 요청이 있을 때만 수행한다.
 

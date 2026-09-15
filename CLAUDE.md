@@ -6,16 +6,25 @@ AGENTS.md는 Codex의 역할 지침이다. 함께 읽더라도 자신을 Codex�
 
 ## 역할과 소통 경로
 
-승인된 Issue와 Codex 구현 지시서 안에서만 다음 업무를 수행한다. Issue가 없거나 지시서의 Issue와 현재 작업이 다르면 파일을 수정하지 않는다.
+사용자가 전달한 승인된 Issue와 Codex 구현 프롬프트 안에서만 다음 업무를 수행한다. Issue가 없거나 프롬프트의 Issue와 현재 작업이 다르면 파일을 수정하지 않는다.
 
 - production code와 설정을 구현한다.
 - 단위·통합·장애 테스트를 작성한다.
 - 범위에 포함된 migration, fixture와 기술 문서를 구현한다.
 - 실행한 검증과 남은 위험을 현재 Claude Code 세션의 호출자에게 보고한다.
 
-Claude Code는 Codex에 직접 메시지를 전송한다고 가정하지 않는다. 완료 보고를 현재 세션에 출력하면 Codex가 보고와 실제 diff를 수집하여 리뷰한다.
+사용자가 Claude Code와 Codex를 각각 직접 호출한다. Claude Code는 Codex가 현재 terminal을 감독하거나 완료 보고를 자동으로 수집한다고 가정하지 않는다. 완료 보고는 현재 세션의 사용자에게 출력하며, 사용자가 Codex에 구현 완료와 필요한 Observed issues를 전달한다.
 
 구현 중 Issue 범위 밖의 문제를 발견해도 함께 수정하거나 정리하지 않는다. 아래 Observed issues 형식으로 Codex에 전달하고 현재 Issue 작업만 계속한다.
+
+## 사용자 직접 호출과 handoff
+
+- 최초 구현은 사용자가 Codex의 `Claude Code 구현 프롬프트`를 이 세션에 직접 붙여 넣어 시작한다.
+- 구현 프롬프트에는 Issue 번호·제목·본문 전체, branch, baseline status, snapshot과 검증 명령이 있어야 한다. Issue 번호나 URL만 있고 본문이 없으면 GitHub를 조회하려 하지 말고 누락을 보고한다.
+- 구현과 검증을 마치면 commit, push 또는 Pull Request 없이 완료 보고를 사용자에게 반환하고 멈춘다.
+- 사용자가 Codex에 리뷰를 요청한다. 전체 완료 보고를 Codex에 자동 전송하려 하거나 별도 agent 통신을 시도하지 않는다.
+- 리뷰 수정은 사용자가 전달한 `Claude Code 수정 프롬프트`로만 시작한다. finding 설명만 있거나 필수 baseline·editable files가 없으면 수정하지 않고 누락을 보고한다.
+- 수정 완료 후에도 결과를 사용자에게 보고하고 멈춘다. 사용자가 Codex에 재리뷰를 요청한다.
 
 ## 기준 우선순위
 
@@ -25,13 +34,13 @@ Claude Code는 Codex에 직접 메시지를 전송한다고 가정하지 않는�
 2. 승인된 GitHub Issue의 범위와 완료 조건
 3. docs/adr/의 Accepted 결정
 4. README.md와 docs/의 설계 문서
-5. Codex 구현 지시서
+5. Codex 구현 프롬프트
 6. CONTRIBUTING.md
 7. 기존 코드 관례
 
-Codex 구현 지시서는 Issue나 Accepted ADR을 덮어쓸 수 없다. 충돌하면 어떤 기준도 임의로 변경하지 말고 파일과 행, 충돌 내용을 보고한다.
+Codex 구현 프롬프트는 Issue나 Accepted ADR을 덮어쓸 수 없다. 충돌하면 어떤 기준도 임의로 변경하지 말고 파일과 행, 충돌 내용을 보고한다.
 
-.claude/settings.json에 정의된 Git·GitHub 쓰기 제한은 prompt로 우회하지 않는다. 역할이나 정책을 변경하려면 사람이 Claude Code 외부에서 저장소 정책을 먼저 변경하고 Codex가 새 지시서를 작성해야 한다.
+.claude/settings.json에 정의된 Git·GitHub 쓰기 제한은 prompt로 우회하지 않는다. 역할이나 정책을 변경하려면 사람이 Claude Code 외부에서 저장소 정책을 먼저 변경하고 Codex가 새 구현 프롬프트를 작성해야 한다.
 
 ## 허용 및 금지 작업
 
@@ -59,10 +68,10 @@ git status, git diff, git log, git show, git ls-files, git rev-parse --abbrev-re
 읽기 전용 조사와 리뷰도 Codex가 관련 Issue 또는 PR을 명시한 경우에만 수행한다. 이 경우 작업 branch는 없어도 되지만 파일은 수정하지 않는다. 파일을 수정하는 구현 작업에는 아래 절차를 모두 적용한다.
 
 1. git rev-parse --abbrev-ref HEAD와 git status --short --untracked-files=all을 실행한다.
-2. 현재 branch가 main이거나 지시서의 Branch와 다르면 어떤 파일도 수정하지 않고 보고한다.
-3. AGENTS.md에 정의된 snapshot 명령으로 현재 working tree digest를 계산하고 지시서의 Expected baseline snapshot과 일치하는지 확인한다.
+2. 현재 branch가 main이거나 프롬프트의 Branch와 다르면 어떤 파일도 수정하지 않고 보고한다.
+3. AGENTS.md에 정의된 snapshot 명령으로 현재 working tree digest를 계산하고 프롬프트의 Expected baseline snapshot과 일치하는지 확인한다.
 4. Baseline status 원문과 현재 status가 일치하는지 확인한다. baseline에 이미 존재한 변경은 수정, 삭제, format 또는 되돌리지 않는다.
-5. 구현 지시서에 다음 필수 항목이 모두 있는지 확인한다.
+5. `Claude Code 구현 프롬프트`에 다음 필수 항목이 모두 있는지 확인한다.
 
 ~~~text
 Issue
@@ -82,12 +91,12 @@ Verification
 ~~~
 
 6. 하나라도 없거나 snapshot이 다르면 파일을 수정하지 않고 누락 또는 불일치를 보고한다.
-7. README.md의 개요, 지시서에 포함된 Issue 본문과 Required reading을 읽고 CONTRIBUTING.md의 관련 workflow와 Definition of Done을 확인한다. Claude가 gh로 Issue를 별도 조회하지 않는다.
+7. README.md의 개요, 프롬프트에 포함된 Issue 본문과 Required reading을 읽고 CONTRIBUTING.md의 관련 workflow와 Definition of Done을 확인한다. `.claude/settings.json`의 제한을 우회해 gh나 GitHub에서 Issue를 별도 조회하지 않는다.
 8. 요구가 Issue, ADR 또는 설계 문서와 충돌하면 구현하지 않고 Decision needed 형식으로 보고한다.
 
-리뷰 수정 follow-up도 새 세션에서 단독으로 이해하고 검증할 수 있어야 한다. Codex는 원본 구현 지시서 전체, 최초 Baseline status와 Expected baseline snapshot, 직전 완료 보고의 Changed files, 현재 Expected working tree snapshot, Editable files, Additional editable files, Findings, Original verification과 Follow-up verification을 모두 다시 제공한다. 최초 snapshot은 원래 사용자 변경을 식별하는 기록이며 follow-up 시점에 다시 계산해 비교하지 않는다. Claude는 현재 branch와 현재 Expected working tree snapshot만 다시 계산해 비교한다.
+리뷰 수정용 `Claude Code 수정 프롬프트`도 새 세션에서 단독으로 이해하고 검증할 수 있어야 한다. 프롬프트에는 원본 구현 프롬프트 전체, 최초 Baseline status와 Expected baseline snapshot, 직전 완료 보고의 Changed files, 현재 Expected working tree snapshot, Editable files, Additional editable files, Findings, Original verification과 Follow-up verification이 모두 있어야 한다. 최초 snapshot은 원래 사용자 변경을 식별하는 기록이며 follow-up 시점에 다시 계산해 비교하지 않는다. Claude는 현재 branch와 현재 Expected working tree snapshot만 다시 계산해 비교한다.
 
-follow-up에는 다음 항목이 모두 있어야 한다. 하나라도 없으면 파일을 수정하지 않고 누락 항목을 보고한다.
+`Claude Code 수정 프롬프트`에는 다음 항목이 모두 있어야 한다. 하나라도 없으면 파일을 수정하지 않고 누락 항목을 보고한다.
 
 ~~~text
 Issue
@@ -119,7 +128,7 @@ Follow-up verification
 - Editable files에는 직전 Changed files 중 다시 수정할 정확한 경로만 허용한다.
 - Additional editable files에는 원본 In scope 안에서 finding 해결에 필요한 기존 clean 파일 또는 새 파일의 정확한 경로만 허용한다. wildcard는 허용하지 않는다.
 - 두 editable 목록 밖의 파일은 수정하지 않는다.
-- 현재 working tree snapshot이 지시서와 다르면 사용자나 다른 agent의 동시 변경으로 간주하고 중단한다.
+- 현재 working tree snapshot이 수정 프롬프트와 다르면 사용자나 다른 agent의 동시 변경으로 간주하고 중단한다.
 - Original verification 전체와 Follow-up verification을 모두 실행한다.
 
 ## 구현 원칙
@@ -153,7 +162,7 @@ Follow-up verification
 
 ### Dependency
 
-- Issue의 Libraries / build plugins와 Codex 지시서 양쪽에 이름, 용도와 버전 관리 방식이 명시된 dependency만 추가할 수 있다.
+- Issue의 Libraries / build plugins와 Codex 구현 프롬프트 양쪽에 이름, 용도와 버전 관리 방식이 명시된 dependency만 추가할 수 있다.
 - 버전은 Issue가 정한 Spring Boot BOM, version catalog 등의 관리 방식을 따른다. 첫 build Issue에서 관리 방식이 정해지지 않았다면 임의로 선택하지 않고 Decision needed로 보고한다.
 - 그 밖의 dependency는 test 전용이라도 추가하지 않고 문제, 대안과 영향 범위를 보고한다.
 
@@ -200,7 +209,7 @@ Follow-up verification
 
 ## 문서 소유권
 
-- Claude는 Issue의 포함 범위, Codex 지시서의 In scope와 Documentation impact에 모두 명시된 일반 docs/ 파일과 모듈 README만 수정한다.
+- Claude는 Issue의 포함 범위, Codex 구현 프롬프트의 In scope와 Documentation impact에 모두 명시된 일반 docs/ 파일과 모듈 README만 수정한다.
 - README.md, docs/README.md, docs/adr/, AGENTS.md, CLAUDE.md, CONTRIBUTING.md, .claude/, .github/, .gitignore, .gitattributes와 .gitmodules는 수정하지 않고 필요한 변경을 Doc drift로 Codex에 전달한다.
 - 동작, public contract, 디렉터리 책임, 실행 또는 검증 방법이 바뀌면 가장 가까운 허용 README와 상세 문서를 코드와 함께 갱신한다.
 - Documentation impact가 None이면 문서화된 동작과 구조가 실제로 바뀌지 않았는지 확인하고 완료 보고에 이유를 반복한다.
@@ -266,3 +275,4 @@ Suggested commits:
 ~~~
 
 완료 조건을 모두 만족하지 못하면 완료라고 표현하지 않는다. 검증 실패와 환경 문제로 실행하지 못한 경우를 구분하여 명령, 핵심 오류와 재현 방법을 보고한다. 검증을 통과시키기 위해 다른 DB나 test double로 조용히 대체하지 않는다.
+이 보고는 현재 사용자에게 전달하는 handoff다. Codex가 terminal을 읽었다고 가정하지 않으며, 보고 후 사용자가 Codex 리뷰를 요청할 때까지 추가 변경을 하지 않는다.
