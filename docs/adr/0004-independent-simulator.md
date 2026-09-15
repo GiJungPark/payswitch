@@ -11,7 +11,7 @@ PaySwitch와 기관 simulator가 동일한 codec implementation을 사용하면 
 
 ## Decision
 
-- `payswitch-app`과 `bank-a-simulator`를 별도 Gradle 모듈과 프로세스로 구성한다.
+- `payment-api`와 `bank-a-simulator`를 별도 Gradle 모듈과 프로세스로 구성한다.
 - simulator는 PaySwitch의 protocol, domain 또는 connector module을 의존하지 않는다.
 - 양쪽은 `docs/protocol-bank-a.md`와 수작업 검증 golden byte fixture만 계약으로 공유한다.
 - 각 codec은 독립적으로 구현하고 상대편과 실제 socket을 통해 contract test를 수행한다.
