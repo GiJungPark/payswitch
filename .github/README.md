@@ -7,6 +7,7 @@
 | 경로 | 용도 |
 |---|---|
 | [ISSUE_TEMPLATE/](ISSUE_TEMPLATE/README.md) | Issue form과 생성 화면 설정 |
+| [workflows/build.yml](workflows/build.yml) | Java 21에서 Gradle 전체 build와 test 실행 |
 | [pull_request_template.md](pull_request_template.md) | 변경, 검증, 문서 영향, 위험과 Claude 관찰사항 보고 |
 
 규칙의 단일 기준은 [CONTRIBUTING.md](../CONTRIBUTING.md)이며, agent 역할은 [AGENTS.md](../AGENTS.md)와 [CLAUDE.md](../CLAUDE.md)에서 확인한다.

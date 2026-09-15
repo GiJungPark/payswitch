@@ -2,7 +2,7 @@
 
 > 금융기관 연동, 원화·외화 승인, 취소, 정산 및 대사를 학습하기 위한 PG(Payment Gateway) 결제 스위치
 
-- **상태:** 설계 중
+- **상태:** 구현 중
 - **현재 목표:** 독립된 TCP 기관 simulator와 통신하며 중복과 결과 불확실성에 안전한 원화 승인 MVP 구현
 
 ## 프로젝트 소개
@@ -104,6 +104,32 @@ flowchart LR
 
 Kafka, Redis와 ELK 전체 구성은 기본 실행에 포함하지 않는다. 해당 문제를 다루는 milestone에서 선택적 Docker Compose profile로 제공한다.
 
+## 프로젝트 구조와 실행
+
+| 모듈 | 책임 | Project dependency |
+|---|---|---|
+| [`payment-domain`](payment-domain/README.md) | framework에 독립적인 결제 도메인 | 없음 |
+| [`payment-application`](payment-application/README.md) | 결제 use case와 외부 연동 port | `payment-domain` |
+| [`payment-infrastructure`](payment-infrastructure/README.md) | 영속성·기관 연동 등 기술 adapter | `payment-application`, `payment-domain` |
+| [`payment-api`](payment-api/README.md) | PaySwitch Spring Boot 실행 애플리케이션 | `payment-application`, `payment-infrastructure` |
+| [`bank-a-simulator`](bank-a-simulator/README.md) | 독립 Bank A simulator 실행 애플리케이션 | PaySwitch module 의존 없음 |
+
+Java 21이 필요하다. 전체 build와 test, 실행 jar 생성은 다음 명령으로 검증한다.
+
+```bash
+./gradlew clean build
+./gradlew test
+./gradlew :payment-api:bootJar :bank-a-simulator:bootJar
+./gradlew projects
+```
+
+현재 실행 모듈은 application context 기준선만 제공하며 결제 API와 TCP server는 후속 milestone에서 구현한다.
+
+```bash
+./gradlew :payment-api:bootRun
+./gradlew :bank-a-simulator:bootRun
+```
+
 ## 개발 로드맵
 
 ### Milestone 0 — 설계 기준선
@@ -111,8 +137,8 @@ Kafka, Redis와 ELK 전체 구성은 기본 실행에 포함하지 않는다. �
 - [x] 프로젝트 목표와 범위 정의
 - [x] 거래 모델과 `UNKNOWN` 응답 정책 결정
 - [x] 가상 TCP 전문 v1 정의
-- [ ] Gradle 멀티모듈 구성
-- [ ] GitHub Actions 기반 기본 build·test workflow
+- [x] Gradle 멀티모듈 구성
+- [x] GitHub Actions 기반 기본 build·test workflow
 
 ### Milestone 1 — 거래 코어
 
