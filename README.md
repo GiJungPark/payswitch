@@ -123,7 +123,7 @@ Java 21이 필요하다. 전체 build와 test, 실행 jar 생성은 다음 명�
 ./gradlew projects
 ```
 
-현재 실행 모듈은 application context 기준선만 제공하며 결제 API와 TCP server는 후속 milestone에서 구현한다.
+현재 `payment-api`는 application context, Flyway migration과 MyBatis 저장소 adapter까지 조립한다. 실행하려면 MySQL 접속 정보를 외부 설정으로 주입해야 하며 자세한 방법은 [payment-api 실행·검증](payment-api/README.md#실행검증)을 따른다. REST 결제 API와 TCP server는 후속 milestone에서 구현한다.
 
 ```bash
 ./gradlew :payment-api:bootRun
@@ -143,7 +143,7 @@ Java 21이 필요하다. 전체 build와 test, 실행 jar 생성은 다음 명�
 ### Milestone 1 — 거래 코어
 
 - [x] 승인 도메인과 상태 전이
-- [ ] MyBatis 기반 거래 저장소
+- [x] MyBatis 기반 거래 저장소
 - [ ] 멱등키와 요청 hash 검증
 - [ ] correlation ID와 구조화 로그
 - [ ] 조건부 갱신과 동시성 테스트

@@ -2,7 +2,7 @@
 
 [문서 홈](README.md) · [프로젝트 홈](../README.md)
 
-이 문서는 구현 전 논리 모델이다. 실제 DDL과 인덱스는 Milestone 1에서 migration으로 관리한다.
+이 문서는 논리 모델이다. 실제 DDL은 [payment-infrastructure](../payment-infrastructure/README.md)의 Flyway migration으로 관리하며, 현재 적용된 범위는 [구현된 스키마](#구현된-스키마)에 정리한다.
 
 ## 관계
 
@@ -142,6 +142,72 @@ consumer_inbox
 ```
 
 consumer의 업무 반영과 inbox 저장은 같은 DB 트랜잭션에서 처리한다.
+
+## 구현된 스키마
+
+[`V1__create_payment_and_financial_transaction.sql`](../payment-infrastructure/src/main/resources/db/migration/V1__create_payment_and_financial_transaction.sql)은 KRW 승인 도메인에 필요한 `payment`와 `financial_transaction`만 생성한다. 나머지 테이블과 위 논리 모델의 추가 컬럼은 해당 기능 Issue에서 migration으로 추가한다.
+
+- 두 테이블은 InnoDB, `utf8mb4_0900_bin`을 사용한다. 식별자 비교는 domain과 같이 대소문자와 trailing space를 구분한다.
+- 금액은 통화 최소 단위 `BIGINT`, 통화는 `CHAR(3)`, 상태와 거래 종류는 enum 이름 문자열, `version`은 `BIGINT`로 저장한다.
+- 시간 컬럼(`created_at`, `updated_at`, `resolved_at`)과 `institution_*`, `failure_stage`는 domain에 대응 값이 없어 아직 생성하지 않는다.
+- 조회 성능 인덱스는 추가하지 않았다. `financial_transaction.payment_id`에는 InnoDB가 FK 제약을 위해 요구하는 인덱스만 생성된다.
+
+### payment
+
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| `payment_id` | `VARCHAR(64)` | PK |
+| `merchant_id` | `VARCHAR(64)` | |
+| `client_reference` | `VARCHAR(128)` | |
+| `approved_amount_minor` | `BIGINT` | |
+| `cancelled_amount_minor` | `BIGINT` | |
+| `reserved_cancel_amount_minor` | `BIGINT` | |
+| `transaction_currency` | `CHAR(3)` | |
+| `status` | `VARCHAR(32)` | |
+| `version` | `BIGINT` | |
+
+| 제약 | 규칙 |
+|---|---|
+| `PRIMARY` | `payment_id` |
+| `uk_payment_merchant_client_reference` | `UNIQUE (merchant_id, client_reference)` |
+| `ck_payment_approved_amount_non_negative` | `approved_amount_minor >= 0` |
+| `ck_payment_cancelled_amount_non_negative` | `cancelled_amount_minor >= 0` |
+| `ck_payment_reserved_cancel_amount_non_negative` | `reserved_cancel_amount_minor >= 0` |
+| `ck_payment_cancel_within_approved` | `cancelled_amount_minor + reserved_cancel_amount_minor <= approved_amount_minor` |
+| `ck_payment_transaction_currency` | `transaction_currency = 'KRW'` (대소문자 구분) |
+| `ck_payment_status` | `CREATED`, `APPROVED`, `DECLINED`, `FAILED`, `RESOLUTION_REQUIRED`, `MANUAL_REVIEW_REQUIRED` |
+| `ck_payment_version_non_negative` | `version >= 0` |
+
+### financial_transaction
+
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| `transaction_id` | `VARCHAR(64)` | PK |
+| `payment_id` | `VARCHAR(64)` | FK → `payment.payment_id` |
+| `transaction_type` | `VARCHAR(16)` | |
+| `original_transaction_id` | `VARCHAR(64)` NULL | FK → `financial_transaction.transaction_id` |
+| `amount_minor` | `BIGINT` | |
+| `currency` | `CHAR(3)` | |
+| `status` | `VARCHAR(32)` | |
+| `version` | `BIGINT` | |
+
+| 제약 | 규칙 |
+|---|---|
+| `PRIMARY` | `transaction_id` |
+| `fk_financial_transaction_payment` | 존재하는 `payment`만 참조 |
+| `fk_financial_transaction_original` | 존재하는 금융거래만 원거래로 참조 |
+| `ck_financial_transaction_amount_positive` | `amount_minor > 0` |
+| `ck_financial_transaction_currency` | `currency = 'KRW'` (대소문자 구분) |
+| `ck_financial_transaction_type` | `AUTHORIZE` |
+| `ck_financial_transaction_authorize_without_original` | `AUTHORIZE`이면 `original_transaction_id IS NULL` |
+| `ck_financial_transaction_status` | `RECEIVED`, `PROCESSING`, `SUCCEEDED`, `DECLINED`, `FAILED`, `UNKNOWN`, `MANUAL_REVIEW_REQUIRED` |
+| `ck_financial_transaction_version_non_negative` | `version >= 0` |
+
+현재 domain은 KRW 승인만 지원하므로 두 테이블의 통화 CHECK는 `KRW`만 허용하고 `USD` 등 다른 통화는 DB에서도 거절한다. 외화를 지원할 때는 통화 CHECK를, `CANCEL`·`REVERSAL`과 취소 상태를 추가할 때는 type·status CHECK를 새 migration으로 확장한다.
+
+### 복원 규칙
+
+DB 제약은 개별 값의 형식과 범위만 보장한다. 저장소 adapter는 조회한 row를 domain 공개 method의 전이 경로로 재생해 복원하며, `(status, version)` 조합이나 금액이 domain 규칙상 도달할 수 없으면 복원을 거절한다. 예를 들어 DB 제약을 통과하는 `CREATED`·`version=7` 결제 row도 domain 객체로 복원되지 않는다. 자세한 내용은 [payment-infrastructure](../payment-infrastructure/README.md#persistence-rehydration)를 따른다.
 
 ## 정산·대사 테이블
 

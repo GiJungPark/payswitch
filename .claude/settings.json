@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "disableBypassPermissionsMode": "disable",
     "disableAutoMode": "disable",
     "deny": [
       "Edit(/.git/**)",

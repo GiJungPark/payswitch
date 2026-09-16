@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.gijungpark.payswitch.infrastructure.persistence.transaction.FinancialTransactionMapper">
+
+    <resultMap id="financialTransactionRow"
+               type="io.github.gijungpark.payswitch.infrastructure.persistence.transaction.FinancialTransactionRow">
+        <constructor>
+            <idArg column="transaction_id" javaType="string"/>
+            <arg column="payment_id" javaType="string"/>
+            <arg column="transaction_type" javaType="string"/>
+            <arg column="original_transaction_id" javaType="string"/>
+            <arg column="amount_minor" javaType="_long"/>
+            <arg column="currency" javaType="string"/>
+            <arg column="status" javaType="string"/>
+            <arg column="version" javaType="_long"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        transaction_id,
+        payment_id,
+        transaction_type,
+        original_transaction_id,
+        amount_minor,
+        currency,
+        status,
+        version
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO financial_transaction (<include refid="columns"/>)
+        VALUES (#{transactionId},
+                #{paymentId},
+                #{transactionType},
+                #{originalTransactionId,jdbcType=VARCHAR},
+                #{amountMinor},
+                #{currency},
+                #{status},
+                #{version})
+    </insert>
+
+    <select id="findById" resultMap="financialTransactionRow">
+        SELECT <include refid="columns"/>
+        FROM financial_transaction
+        WHERE transaction_id = #{transactionId}
+    </select>
+
+    <select id="findByPaymentId" resultMap="financialTransactionRow">
+        SELECT <include refid="columns"/>
+        FROM financial_transaction
+        WHERE payment_id = #{paymentId}
+        ORDER BY transaction_id
+    </select>
+</mapper>

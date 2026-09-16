@@ -9,7 +9,8 @@
 - `Payment`, `FinancialTransaction`, `InstitutionMessageAttempt`의 경계와 상태 전이 규칙을 담는다.
 - 금액 불변식, 통화와 minor unit 규칙을 framework 없이 표현한다.
 - 현재는 KRW 승인용 `Payment`와 `AUTHORIZE` `FinancialTransaction`의 생성, 상태 전이와 version 규칙을 구현한다.
-- 취소·망취소, 멱등키, `InstitutionMessageAttempt`와 영속성 mapping은 후속 Issue에서 구현한다.
+- 취소·망취소, 멱등키와 `InstitutionMessageAttempt`는 후속 Issue에서 구현한다.
+- 영속성 row mapping과 domain 복원은 [payment-infrastructure](../payment-infrastructure/README.md#persistence-rehydration)가 담당하며 이 모듈은 framework에 독립적인 상태 전이와 불변식만 제공한다.
 
 ## 주요 진입점
 
