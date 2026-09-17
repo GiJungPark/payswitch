@@ -144,7 +144,7 @@ Java 21이 필요하다. 전체 build와 test, 실행 jar 생성은 다음 명�
 
 - [x] 승인 도메인과 상태 전이
 - [x] MyBatis 기반 거래 저장소
-- [ ] 멱등키와 요청 hash 검증
+- [x] 멱등키와 요청 hash 검증
 - [ ] correlation ID와 구조화 로그
 - [ ] 조건부 갱신과 동시성 테스트
 

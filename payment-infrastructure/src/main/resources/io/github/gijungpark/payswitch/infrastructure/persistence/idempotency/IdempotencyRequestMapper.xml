@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.gijungpark.payswitch.infrastructure.persistence.idempotency.IdempotencyRequestMapper">
+
+    <resultMap id="idempotencyRequestRow"
+               type="io.github.gijungpark.payswitch.infrastructure.persistence.idempotency.IdempotencyRequestRow">
+        <constructor>
+            <idArg column="merchant_id" javaType="string"/>
+            <idArg column="operation_type" javaType="string"/>
+            <idArg column="idempotency_key" javaType="string"/>
+            <arg column="request_hash" javaType="string"/>
+            <arg column="transaction_id" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="columns">
+        merchant_id,
+        operation_type,
+        idempotency_key,
+        request_hash,
+        transaction_id
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO idempotency_request (<include refid="columns"/>)
+        VALUES (#{merchantId},
+                #{operationType},
+                #{idempotencyKey},
+                #{requestHash},
+                #{transactionId})
+    </insert>
+
+    <select id="find" resultMap="idempotencyRequestRow">
+        SELECT <include refid="columns"/>
+        FROM idempotency_request
+        WHERE merchant_id = #{merchantId}
+          AND operation_type = #{operationType}
+          AND idempotency_key = #{idempotencyKey}
+    </select>
+</mapper>

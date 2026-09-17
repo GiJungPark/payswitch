@@ -10,7 +10,7 @@
 erDiagram
     PAYMENT ||--o{ FINANCIAL_TRANSACTION : contains
     FINANCIAL_TRANSACTION ||--o{ INSTITUTION_MESSAGE_ATTEMPT : sends
-    FINANCIAL_TRANSACTION ||--|| IDEMPOTENCY_REQUEST : guarded_by
+    FINANCIAL_TRANSACTION ||--|{ IDEMPOTENCY_REQUEST : guarded_by
     FINANCIAL_TRANSACTION ||--o{ TRANSACTION_STATUS_HISTORY : records
     PAYMENT ||--o{ SETTLEMENT_TARGET : produces
     SETTLEMENT ||--o{ SETTLEMENT_DETAIL : contains
@@ -86,6 +86,9 @@ expires_at
 - 같은 키와 같은 `request_hash`면 기관을 다시 호출하지 않고 기존 거래의 현재 상태를 반환한다.
 - 같은 키와 다른 `request_hash`면 `409 IDEMPOTENCY_KEY_REUSED`를 반환한다.
 - 다른 멱등키로 같은 `client_reference`의 승인 내용이 달라지면 `409 CLIENT_REFERENCE_CONFLICT`를 반환한다.
+- 다른 멱등키로 같은 `client_reference`의 같은 승인 내용이 오면 기존 거래를 반환하고, 그 멱등키를 기존 거래와 현재 `request_hash`에 결합해 저장한다. 따라서 금융거래 하나를 여러 멱등키가 참조할 수 있다.
+
+현재 구현의 컬럼, 제약과 hash 형식은 [구현된 스키마의 idempotency_request](#idempotency_request-1)를 따른다.
 
 ### institution_message_attempt
 
@@ -145,9 +148,9 @@ consumer의 업무 반영과 inbox 저장은 같은 DB 트랜잭션에서 처리
 
 ## 구현된 스키마
 
-[`V1__create_payment_and_financial_transaction.sql`](../payment-infrastructure/src/main/resources/db/migration/V1__create_payment_and_financial_transaction.sql)은 KRW 승인 도메인에 필요한 `payment`와 `financial_transaction`만 생성한다. 나머지 테이블과 위 논리 모델의 추가 컬럼은 해당 기능 Issue에서 migration으로 추가한다.
+[`V1__create_payment_and_financial_transaction.sql`](../payment-infrastructure/src/main/resources/db/migration/V1__create_payment_and_financial_transaction.sql)은 KRW 승인 도메인에 필요한 `payment`와 `financial_transaction`을, [`V2__create_idempotency_request.sql`](../payment-infrastructure/src/main/resources/db/migration/V2__create_idempotency_request.sql)은 승인 멱등키 `idempotency_request`를 생성한다. 나머지 테이블과 위 논리 모델의 추가 컬럼은 해당 기능 Issue에서 migration으로 추가한다.
 
-- 두 테이블은 InnoDB, `utf8mb4_0900_bin`을 사용한다. 식별자 비교는 domain과 같이 대소문자와 trailing space를 구분한다.
+- 세 테이블은 InnoDB, `utf8mb4_0900_bin`을 사용한다. 식별자 비교는 domain과 같이 대소문자와 trailing space를 구분한다.
 - 금액은 통화 최소 단위 `BIGINT`, 통화는 `CHAR(3)`, 상태와 거래 종류는 enum 이름 문자열, `version`은 `BIGINT`로 저장한다.
 - 시간 컬럼(`created_at`, `updated_at`, `resolved_at`)과 `institution_*`, `failure_stage`는 domain에 대응 값이 없어 아직 생성하지 않는다.
 - 조회 성능 인덱스는 추가하지 않았다. `financial_transaction.payment_id`에는 InnoDB가 FK 제약을 위해 요구하는 인덱스만 생성된다.
@@ -204,6 +207,71 @@ consumer의 업무 반영과 inbox 저장은 같은 DB 트랜잭션에서 처리
 | `ck_financial_transaction_version_non_negative` | `version >= 0` |
 
 현재 domain은 KRW 승인만 지원하므로 두 테이블의 통화 CHECK는 `KRW`만 허용하고 `USD` 등 다른 통화는 DB에서도 거절한다. 외화를 지원할 때는 통화 CHECK를, `CANCEL`·`REVERSAL`과 취소 상태를 추가할 때는 type·status CHECK를 새 migration으로 확장한다.
+
+### idempotency_request
+
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| `merchant_id` | `VARCHAR(64)` | |
+| `operation_type` | `VARCHAR(16)` | `FinancialTransactionType` 이름 |
+| `idempotency_key` | `VARCHAR(128)` | 원래 문자열. application이 blank와 128 code point 초과를 DB 접근 전에 거절한다. |
+| `request_hash` | `CHAR(64)` | [request hash](#request-hash)의 소문자 16진수 |
+| `transaction_id` | `VARCHAR(64)` | FK → `financial_transaction.transaction_id` |
+
+| 제약 | 규칙 |
+|---|---|
+| `PRIMARY` | `(merchant_id, operation_type, idempotency_key)` |
+| `fk_idempotency_request_transaction` | 존재하는 금융거래만 참조. `transaction_id`는 유일하지 않으며 InnoDB가 FK용 non-unique index를 만든다. |
+| `ck_idempotency_request_operation_type` | `AUTHORIZE` |
+| `ck_idempotency_request_request_hash` | `REGEXP_LIKE(request_hash, '^[0-9a-f]{64}$', 'c')` |
+
+```sql
+CREATE TABLE idempotency_request
+(
+    merchant_id     VARCHAR(64)  NOT NULL,
+    operation_type  VARCHAR(16)  NOT NULL,
+    idempotency_key VARCHAR(128) NOT NULL,
+    request_hash    CHAR(64)     NOT NULL,
+    transaction_id  VARCHAR(64)  NOT NULL,
+    CONSTRAINT pk_idempotency_request PRIMARY KEY (merchant_id, operation_type, idempotency_key),
+    CONSTRAINT fk_idempotency_request_transaction
+        FOREIGN KEY (transaction_id) REFERENCES financial_transaction (transaction_id),
+    CONSTRAINT ck_idempotency_request_operation_type CHECK (operation_type IN ('AUTHORIZE')),
+    CONSTRAINT ck_idempotency_request_request_hash CHECK (REGEXP_LIKE(request_hash, '^[0-9a-f]{64}$', 'c'))
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_bin;
+```
+
+- 논리 모델의 유일 제약 `(merchant_id, operation_type, idempotency_key)`는 PK로 구현했다. MySQL은 PK 이름을 항상 `PRIMARY`로 보고하므로 중복 오류의 index 이름은 `idempotency_request.PRIMARY`다.
+- `created_at`, `expires_at`은 만료 정리와 TTL 운영 정책 Issue에서 추가한다. 현재 멱등키 기록은 만료되지 않는다.
+- 같은 `client_reference`의 같은 요청에 쓰인 멱등키는 모두 같은 `transaction_id`를 참조한다. 한 번 기록된 멱등키는 이후 다른 요청 내용에 사용되면 `IDEMPOTENCY_KEY_REUSED`로 판정된다.
+- 신규 등록은 결제, 승인 금융거래, 멱등키 기록을 한 DB transaction에서 이 순서로 insert한다. 기존 거래 재사용 시 새 멱등키 기록은 단독 transaction으로 insert한다. 동시 요청의 최종 판정은 `payment.uk_payment_merchant_client_reference`와 `idempotency_request` PK가 수행하며 자세한 흐름은 [장애 시나리오](failure-scenarios.md#중복-승인-요청)를 따른다.
+
+### request hash
+
+승인 요청 hash는 다음 canonical bytes의 SHA-256 digest를 소문자 16진수 64자로 저장한다. 멱등키는 포함하지 않는다.
+
+| 순서 | 필드 | 값 표현 |
+|---:|---|---|
+| 1 | operation type | `AUTHORIZE` |
+| 2 | `merchantId` | 원래 문자열 |
+| 3 | `clientReference` | 원래 문자열 |
+| 4 | `amountMinor` | 부호와 앞자리 0이 없는 ASCII 10진수 |
+| 5 | `currency` | ISO 4217 대문자 3자 |
+
+- 각 필드는 `<값의 UTF-8 byte 길이를 ASCII 10진수로 쓴 값>` + `:`(0x3A) + `<값의 UTF-8 bytes>`로 표현하고 구분자나 줄바꿈 없이 순서대로 연결한다.
+- 길이 접두사가 필드 경계를 정하므로 값에 `:`나 숫자가 있어도 모호하지 않다. locale, 기본 charset과 platform line ending을 사용하지 않는다.
+
+| 요청 (`merchantId`, `clientReference`, `amountMinor`, `currency`) | canonical bytes | SHA-256 |
+|---|---|---|
+| `M-001`, `ORDER-0001`, `10000`, `KRW` | `9:AUTHORIZE5:M-00110:ORDER-00015:100003:KRW` | `3b3d469f85cd8f19e8a05fe561020bc23b8d950564471067c752624ee1205211` |
+| `M-001`, `ORDER-0001`, `1`, `KRW` | `9:AUTHORIZE5:M-00110:ORDER-00011:13:KRW` | `5e62e9212611ac2eaa25a6d69bc29671023b21fef724f06cf337d45f8b3cb74e` |
+| `M-001`, `ORDER-0001`, `9223372036854775807`, `KRW` | `9:AUTHORIZE5:M-00110:ORDER-000119:92233720368547758073:KRW` | `bdc71d2a12da1391c5a208b6f5d249b9b07111405931bf284e9f5105f359bad4` |
+| `M-001`, `주문-1`, `10000`, `KRW` | `9:AUTHORIZE5:M-0018:주문-15:100003:KRW` (UTF-8) | `e9ab25a00bfb7c3f29f47a861a557a10038876b42f1f1aae6671f186a88b181c` |
+| `M-001`, `ORDER-0001`, `10000`, `USD` | `9:AUTHORIZE5:M-00110:ORDER-00015:100003:USD` | `534c24f01e5021dbff9fcabcfa142e450aeab83f9aff776f301353bbd8e25c0b` |
+
+첫 번째 예시의 bytes는 `39 3a 41 55 54 48 4f 52 49 5a 45 35 3a 4d 2d 30 30 31 31 30 3a 4f 52 44 45 52 2d 30 30 30 31 35 3a 31 30 30 30 30 33 3a 4b 52 57`이다. 이 값은 `AuthorizationRequestCanonicalFormTest`가 고정한다.
 
 ### 복원 규칙
 
