@@ -21,6 +21,7 @@ abstract class MySqlIntegrationTest {
 
     @BeforeEach
     fun deleteRows() {
+        jdbcTemplate.update("DELETE FROM idempotency_request")
         jdbcTemplate.update("DELETE FROM financial_transaction")
         jdbcTemplate.update("DELETE FROM payment")
     }

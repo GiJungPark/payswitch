@@ -115,7 +115,7 @@ failureReason
 
 ## 구현된 승인 도메인 규칙
 
-[`payment-domain`](../payment-domain/README.md)은 현재 KRW 승인에 필요한 `Payment`와 `AUTHORIZE` `FinancialTransaction`만 구현한다. 취소·망취소 거래, 금액 예약, 멱등키·요청 hash와 `InstitutionMessageAttempt`는 후속 Issue에서 추가한다.
+[`payment-domain`](../payment-domain/README.md)은 현재 KRW 승인에 필요한 `Payment`와 `AUTHORIZE` `FinancialTransaction`만 구현한다. 취소·망취소 거래, 금액 예약과 `InstitutionMessageAttempt`는 후속 Issue에서 추가한다. 승인 요청의 멱등키와 요청 hash는 domain 모델이 아니라 [`payment-application`](../payment-application/README.md#승인-접수-contract)이 관리한다.
 
 ### 금액과 식별자
 
@@ -145,6 +145,27 @@ failureReason
 - 이미 `APPROVED`인 `Payment`에 같은 승인 금액을 다시 적용하면 no-op이고, 다른 금액은 상충 결과로 거절한다.
 - terminal 상태에서 다른 결과를 적용하거나 허용되지 않은 전이를 요청하면 예외를 발생시키고 기존 상태·금액·`version`을 유지한다.
 
+## 승인 요청 중복 판정
+
+`clientReference`는 가맹점 범위에서 최초 승인 요청을 식별하고, 멱등키는 같은 operation의 재시도를 식별한다. 승인 접수는 두 기준을 다음 순서로 적용한다.
+
+| 기존 데이터 | 새 요청 | 결과 | 저장 |
+|---|---|---|---|
+| 없음 | 모든 KRW 요청 | 최초 등록 (`Registered`) | `Payment`=`CREATED`, 승인 거래=`RECEIVED`, 멱등키 기록을 한 transaction에서 생성 |
+| 같은 가맹점·멱등키 | request hash 같음 | 기존 거래 재사용 (`Reused`) | 변경 없음 |
+| 같은 가맹점·멱등키 | request hash 다름 | `IDEMPOTENCY_KEY_REUSED` | 변경 없음 |
+| 같은 가맹점·`clientReference`, 다른 멱등키 | 금액과 통화 같음 | 기존 거래 재사용 (`Reused`) | `Payment`·거래는 변경 없음. 새 멱등키를 기존 승인 거래와 현재 request hash에 결합해 저장한다. |
+| 같은 가맹점·`clientReference`, 다른 멱등키 | 금액 또는 통화 다름 | `CLIENT_REFERENCE_CONFLICT` | 변경 없음 |
+
+- 멱등키 기록 비교가 `clientReference` 비교보다 먼저다. 같은 멱등키로 `clientReference`만 바꾼 요청도 `IDEMPOTENCY_KEY_REUSED`다.
+- `Reused`를 반환한 멱등키도 소비된 재시도 식별자다. 예를 들어 `KEY-1`로 `ORDER-1`을 등록한 뒤 `KEY-2`로 같은 `ORDER-1` 요청을 보내면 `Reused`이고, 이후 `KEY-2`로 `ORDER-2`나 다른 금액을 보내면 새 거래를 만들지 않고 `IDEMPOTENCY_KEY_REUSED`를 반환한다.
+- 따라서 승인 거래 하나를 여러 멱등키가 참조할 수 있다.
+- request hash는 operation type, `merchantId`, `clientReference`, `amountMinor`, `currency`로 계산하며 멱등키는 포함하지 않는다. 형식은 [데이터 모델](database-schema.md#request-hash)을 따른다.
+- `clientReference` 비교는 같은 결제의 `AUTHORIZE` 거래 금액(`amountMinor`, `currency`)과 요청 금액을 비교한다.
+- 통화 지원 여부는 충돌 판정 뒤에 검사한다. 기존 KRW 승인과 같은 `clientReference`로 USD를 요청하면 `CLIENT_REFERENCE_CONFLICT`이고, 기존 데이터가 없는 USD 요청은 등록하지 않고 거절한다.
+- 기존 거래 재사용 결과는 저장된 `Payment`와 승인 거래의 현재 상태를 반환하며 기관 전문을 다시 보내지 않는다.
+- 동시 요청은 DB unique 제약이 최종 판정한다. 신규 등록이나 새 멱등키 결합이 경쟁에서 지면 rollback 후 commit된 row로 위 표를 다시 적용한다.
+
 ## API 결과 정책
 
 | 상황 | HTTP | 거래 상태 | 정책 |
@@ -152,6 +173,7 @@ failureReason
 | 요청 형식 오류 | 400 | 생성하지 않음 | 필드 오류를 반환한다. |
 | 동일 멱등키·동일 요청 | 이전과 동일 | 기존 상태 | 새 기관 요청 없이 기존 응답을 반환한다. |
 | 동일 멱등키·다른 요청 | 409 | 기존 상태 유지 | `IDEMPOTENCY_KEY_REUSED`를 반환한다. |
+| 다른 멱등키·같은 client reference·다른 금액 또는 통화 | 409 | 기존 상태 유지 | `CLIENT_REFERENCE_CONFLICT`를 반환한다. |
 | 기관의 확정 승인 | 200 | `SUCCEEDED` | 승인번호와 결과를 반환한다. |
 | 기관의 확정 거절 | 200 | `DECLINED` | 기관 응답 코드를 내부 코드로 변환한다. |
 | 기관 전달 전 확정 실패 | 503 | `FAILED` | route/점검/연결 실패 사유를 반환한다. |
